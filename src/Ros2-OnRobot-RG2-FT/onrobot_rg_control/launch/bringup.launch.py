@@ -1,0 +1,44 @@
+from launch import LaunchDescription
+from launch.actions import DeclareLaunchArgument
+from launch.substitutions import LaunchConfiguration
+from launch_ros.actions import Node
+
+def generate_launch_description():
+      return LaunchDescription([
+            DeclareLaunchArgument(
+                  "ip", default_value="10.150.0.2",
+                  description="IP address for the OnRobot gripper"),
+            DeclareLaunchArgument(
+                  "port", default_value="502",
+                  description="Port for the OnRobot gripper"),
+            DeclareLaunchArgument(
+                  "gripper", default_value="rg2ft",
+                  description="Type of the OnRobot gripper"),
+            DeclareLaunchArgument(
+                  "dummy", default_value="false",
+                  description="Dummy mode for the OnRobot gripper"),
+            Node(
+                  package="onrobot_rg_control",
+                  executable="onrobot_rg_tcp_node",
+                  name="OnRobotRGTcpNode",
+                  parameters=[
+                        {"ip": LaunchConfiguration("ip")},
+                        {"port": LaunchConfiguration("port")},
+                        {"gripper": LaunchConfiguration("gripper")},
+                        {"dummy": LaunchConfiguration("dummy")},
+                  ],
+                  #output="screen", 
+            ),         
+            Node(
+                  package="onrobot_rg_control",
+                  executable="onrobot_rg_status_listener",
+                  name="OnRobotRGStatusListener",
+                  parameters=[
+                        {"ip": LaunchConfiguration("ip")},
+                        {"port": LaunchConfiguration("port")},
+                        {"gripper": LaunchConfiguration("gripper")},
+                        {"dummy": LaunchConfiguration("dummy")},
+                  ],
+                  #output="screen", 
+            ),
+      ])
