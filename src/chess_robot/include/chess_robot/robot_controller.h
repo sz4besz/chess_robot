@@ -3,8 +3,6 @@
 
 #include <rclcpp/rclcpp.hpp>
 #include <geometry_msgs/msg/point.hpp>
-#include <geometry_msgs/msg/pose.hpp>
-#include <geometry_msgs/msg/quaternion.hpp>
 #include <std_msgs/msg/string.hpp>
 #include <std_srvs/srv/trigger.hpp>
 #include <string>
@@ -21,10 +19,9 @@ private:
     EngineClient engine;
     GameState gs;
 
-    static const geometry_msgs::msg::Quaternion DOWN_ORIENTATION;
-    static const geometry_msgs::msg::Pose HOME_POSE;
-    static const geometry_msgs::msg::Pose CAMERA_POSE;
-    static const geometry_msgs::msg::Pose GRAVEYARD;
+    static const geometry_msgs::msg::Point HOME_POS;
+    static const geometry_msgs::msg::Point CAMERA_POS;
+    static const geometry_msgs::msg::Point GRAVEYARD_POS;
     static const double GRIP_HEIGHT;
 
     std::vector<geometry_msgs::msg::Point> board_coordinates_;
@@ -42,6 +39,7 @@ public:
     std::vector<geometry_msgs::msg::Point> pixelsToTCP(std::string centers);
     void executeMove(Tile fromTile, Tile toTile, MoveType type);
 
+    //TODO: REMOVE
     void normalMove(const geometry_msgs::msg::Point& from, const geometry_msgs::msg::Point& to);
 
     void movel_normal_script(geometry_msgs::msg::Point from_pt, geometry_msgs::msg::Point to_pt);
@@ -52,6 +50,7 @@ public:
     void movej_home_pos();
 
     void set_gripper(int width, int force);
+
 };
 
 #endif // ROBOT_CONTROLLER_HPP
