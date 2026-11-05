@@ -33,6 +33,7 @@ private:
 
     static const geometry_msgs::msg::Quaternion DOWN_ORIENTATION;
     static const geometry_msgs::msg::Pose HOME_POSE;
+    static const geometry_msgs::msg::Pose CAMERA_POSE;
     static const geometry_msgs::msg::Pose GRAVEYARD;
     static const double GRIP_HEIGHT;
 
@@ -62,7 +63,11 @@ public:
     void normalMove(const geometry_msgs::msg::Point& from, const geometry_msgs::msg::Point& to);
 
     void movel_normal_script(geometry_msgs::msg::Point from_pt, geometry_msgs::msg::Point to_pt);
-    void movel(geometry_msgs::msg::Point pt, float height);
+    void movel(geometry_msgs::msg::Point pt, float height, std::string orientation);
+
+    void movej(geometry_msgs::msg::Point pt, float height, std::string orientation);
+    void movej_camera_pos();
+    void movej_home_pos();
 
     void set_gripper(int width, int force);
 };

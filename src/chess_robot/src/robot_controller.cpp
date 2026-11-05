@@ -263,11 +263,22 @@ const geometry_msgs::msg::Quaternion ChessRobotController::DOWN_ORIENTATION = []
 const geometry_msgs::msg::Pose ChessRobotController::HOME_POSE = [](){
     geometry_msgs::msg::Pose p;
     p.orientation = DOWN_ORIENTATION; 
-    p.position.x = -0.07065;             
-    p.position.y = -0.22189;             
-    p.position.z = 0.03850;              
+    p.position.x = -0.09344;             
+    p.position.y = -0.22674;             
+    p.position.z = 0.06315;              
     return p;
 }();
+
+const geometry_msgs::msg::Pose ChessRobotController::CAMERA_POSE = [](){
+    geometry_msgs::msg::Pose p;
+    p.orientation = DOWN_ORIENTATION; 
+    p.position.x = -0.09346;             
+    p.position.y = -0.59265;             
+    p.position.z = 0.42887;              
+    return p;
+}();
+
+
 
 // TODO
 // Graveyard for pieces someplace off board
@@ -281,7 +292,7 @@ const geometry_msgs::msg::Pose ChessRobotController::GRAVEYARD = [](){
 }();
 // TODO
 // The Z-plane where gripper contacts
-const double ChessRobotController::GRIP_HEIGHT = -0.18582;
+const double ChessRobotController::GRIP_HEIGHT = -0.1818;
 
 geometry_msgs::msg::Pose ChessRobotController::createPose(double x, double y, double z){
     geometry_msgs::msg::Pose p = HOME_POSE;
@@ -357,8 +368,8 @@ void ChessRobotController::executeMove(Tile fromTile, Tile toTile, MoveType type
 
 //GRIPPER OPEN = 30mm
 //GRIPPER CLOSE = 10mm
-int OPEN = 30;
-int CLOSE = 10;
+int OPEN = 40;
+int CLOSE = 5;
 int FORCE = 20;
 void ChessRobotController::set_gripper(int width, int force){
     std::string cmd = "python3 /home/mates/onlab/src/chess_robot/scripts/robot_script/gripper.py " 
@@ -367,11 +378,7 @@ void ChessRobotController::set_gripper(int width, int force){
 
 }
 
-void ChessRobotController::movel(geometry_msgs::msg::Point pt, float height) {
-
-    // DOWN ORIENTATION
-    std::string down = ", 0, 3.14, 0],";
-    std::string camera = ", 0, 3.14, 0],";
+void ChessRobotController::movel(geometry_msgs::msg::Point pt, float height, std::string orientation) {
 
     std::string x = std::to_string(pt.x);
     std::string y = std::to_string(pt.y);
@@ -379,7 +386,7 @@ void ChessRobotController::movel(geometry_msgs::msg::Point pt, float height) {
 
     std::string script = "def move():\n";
     
-    script += "movel(p[" + x + ", " + y + ", " + z + down + " a = 1.2, v=0.05, r=0)\n"; 
+    script += "movel(p[" + x + ", " + y + ", " + z + orientation + " a = 1.2, v=0.1, r=0)\n"; 
     script += "end\n";
 
     std_msgs::msg::String msg;
@@ -402,67 +409,115 @@ E.G. From documentation
 
   end"
   */
+    std::string down = ", 0, 3.14, 0],";
 
     geometry_msgs::msg::Point home;
     home.x = HOME_POSE.position.x;
     home.y = HOME_POSE.position.y;
+    home.z = HOME_POSE.position.z;
+
+    int WAIT = 3;
 
     // Hover above pickup
-    movel(from_pt, HOME_POSE.position.z); 
-    std::this_thread::sleep_for(std::chrono::seconds(5));
+    movel(from_pt, home.z, down); 
+    std::this_thread::sleep_for(std::chrono::seconds(WAIT));
     
     // OPEN GRIPPER (30mm, 20N)
     set_gripper(OPEN, FORCE);
-    std::this_thread::sleep_for(std::chrono::seconds(5));
+    std::this_thread::sleep_for(std::chrono::seconds(WAIT));
 
     // Descend to piece
-    movel(from_pt, GRIP_HEIGHT);          
-    std::this_thread::sleep_for(std::chrono::seconds(5));
+    movel(from_pt, GRIP_HEIGHT, down);          
+    std::this_thread::sleep_for(std::chrono::seconds(WAIT));
     
     // CLOSE GRIPPER (10mm, 20N)
     set_gripper(CLOSE, FORCE);
-    std::this_thread::sleep_for(std::chrono::seconds(5));
+    std::this_thread::sleep_for(std::chrono::seconds(WAIT));
 
     // Ascend with piece
-    movel(from_pt, HOME_POSE.position.z); 
-    std::this_thread::sleep_for(std::chrono::seconds(5));
+    movel(from_pt, home.z, down); 
+    std::this_thread::sleep_for(std::chrono::seconds(WAIT));
 
     // Hover above target
-    movel(to_pt, HOME_POSE.position.z);   
-    std::this_thread::sleep_for(std::chrono::seconds(5));
+    movel(to_pt, home.z, down);   
+    std::this_thread::sleep_for(std::chrono::seconds(WAIT));
 
-    // Descend to drop (Drop height is slightly above grip height)
-    movel(to_pt, GRIP_HEIGHT + 0.015);       
-    std::this_thread::sleep_for(std::chrono::seconds(5));
+    // Descend to drop
+    movel(to_pt, GRIP_HEIGHT + 0.15, down);       
+    std::this_thread::sleep_for(std::chrono::seconds(WAIT));
 
     // OPEN GRIPPER to drop piece
     set_gripper(OPEN, FORCE);
+    std::this_thread::sleep_for(std::chrono::seconds(WAIT));
 
     // Ascend from target
-    movel(to_pt, HOME_POSE.position.z); 
-    std::this_thread::sleep_for(std::chrono::seconds(5));
+    movel(to_pt, home.z, down); 
+    std::this_thread::sleep_for(std::chrono::seconds(WAIT));
 
     // Return home
-    movel(home, HOME_POSE.position.z);    
-    std::this_thread::sleep_for(std::chrono::seconds(5));
+    movel(home, home.z, down);
+    std::this_thread::sleep_for(std::chrono::seconds(WAIT));
 }
 
-void ChessRobotController::runDebug(){
-    RCLCPP_INFO(this->get_logger(), "Starting debug movement test...");
+void ChessRobotController::movej(geometry_msgs::msg::Point pt, float height, std::string orientation) {
+    std::string x = std::to_string(pt.x);
+    std::string y = std::to_string(pt.y);
+    std::string z = std::to_string(height);
 
-    /*
-    bool success = move_to_pose(HOME_POSE);
+    std::string script = "def move():\n";
+    // NOTE: Explicit comma added before 'a'
+    script += "  movej(p[" + x + ", " + y + ", " + z + orientation + ", a=1.0, v=0.2, r=0)\n"; 
+    script += "end\n";
 
-    if (success) {
-        RCLCPP_INFO(this->get_logger(), "Successfully reached HOME_POSE!");
-    } else {
-        RCLCPP_ERROR(this->get_logger(), "Failed to plan or execute path to HOME_POSE.");
-    }
-    */
+    std_msgs::msg::String msg;
+    msg.data = script;
+    urscript_pub_->publish(msg);
+}
+
+void ChessRobotController::movej_camera_pos() {
+    std::string camera_rot = ", 0.0, -2.201, 2.324]";
+    std::string down_rot = ", 0.0, -3.1415, 0.0]";
 
     geometry_msgs::msg::Point home;
     home.x = HOME_POSE.position.x;
     home.y = HOME_POSE.position.y;
+    home.z = HOME_POSE.position.z;
+
+    geometry_msgs::msg::Point camera;
+    camera.x = CAMERA_POSE.position.x;
+    camera.y = CAMERA_POSE.position.y;
+    camera.z = CAMERA_POSE.position.z;
+
+    movel(home, home.z, down_rot);
+    std::this_thread::sleep_for(std::chrono::seconds(5));
+  
+    movej(camera, camera.z, camera_rot);
+    std::this_thread::sleep_for(std::chrono::seconds(5));
+}
+
+void ChessRobotController::movej_home_pos() {
+
+    std::string down_rot = ", 0.0, -3.1415, 0.0]";
+
+    geometry_msgs::msg::Point home;
+    home.x = HOME_POSE.position.x;
+    home.y = HOME_POSE.position.y;
+    home.z = HOME_POSE.position.z;
+
+    movej(home, home.z, down_rot);
+
+    std::this_thread::sleep_for(std::chrono::seconds(5));
+}
+
+
+void ChessRobotController::runDebug(){
+    RCLCPP_INFO(this->get_logger(), "Starting debug movement test...");
+    std::this_thread::sleep_for(std::chrono::seconds(2));
+
+    geometry_msgs::msg::Point home;
+    home.x = HOME_POSE.position.x;
+    home.y = HOME_POSE.position.y;
+    home.z = HOME_POSE.position.z;
 
     geometry_msgs::msg::Point from;
     from.x = -0.07065;
@@ -472,14 +527,19 @@ void ChessRobotController::runDebug(){
     to.x = 0.05844;
     to.y = -0.30794;
 
+    //movej_camera_pos();
+    //std::this_thread::sleep_for(std::chrono::seconds(5));
+
+    //movej_home_pos();
+    //std::this_thread::sleep_for(std::chrono::seconds(5));
+
     movel_normal_script(from, to);
 
+    //movel(home, home.z, ", 0, 3.14, 0],");
     
 
     RCLCPP_INFO(this->get_logger(), "URScript command sent directly to the robot.");
 
 }
-
-    
 
 
