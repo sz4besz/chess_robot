@@ -19,17 +19,7 @@ endif()
 find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(std_msgs REQUIRED)
-find_package(sensor_msgs REQUIRED)
-find_package(rclcpp_action REQUIRED)
-find_package(control_msgs REQUIRED)
-find_package(ur_msgs REQUIRED)
-find_package(moveit_ros_planning_interface REQUIRED)
-find_package(moveit_core REQUIRED)
-find_package(Eigen3 REQUIRED)
-find_package(cv_bridge REQUIRED)
 find_package(geometry_msgs REQUIRED)
-find_package(tf2 REQUIRED)
-find_package(moveit_msgs REQUIRED)
 find_package(std_srvs REQUIRED)
 
 # Build the library and executables
@@ -41,26 +31,15 @@ add_library(engine_client src/engine_client.cpp)
 ament_target_dependencies(chess_robot_core 
   rclcpp
   std_msgs
-  sensor_msgs
-  rclcpp_action
-  control_msgs
-  ur_msgs
-  moveit_ros_planning_interface
-  moveit_core
-  cv_bridge
   geometry_msgs
-  tf2
-  moveit_msgs
-  rclcpp std_srvs
+  std_srvs
 )
 
 ament_target_dependencies(robot_controller
   rclcpp
   geometry_msgs
-  tf2
-  moveit_ros_planning_interface
-  moveit_core
-  moveit_msgs
+  std_msgs
+  std_srvs
 )
 
 target_link_libraries(robot_controller chess_robot_core)

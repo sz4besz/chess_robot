@@ -15,8 +15,6 @@ int main(int argc, char** argv) {
         rclcpp::spin(chess_node); 
     });
 
-    chess_node->initialize_move_group();
-
     // Choose mode: runDebug() or run_chess_game()
     chess_node->runDebug(); 
 

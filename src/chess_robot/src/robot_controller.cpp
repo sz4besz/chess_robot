@@ -1,22 +1,13 @@
 
 #include <cstddef>
-#include <cstdio>
-#include <geometry_msgs/msg/detail/point__struct.hpp>
-#include <geometry_msgs/msg/detail/pose__struct.hpp>
-#include <moveit/move_group_interface/move_group_interface.h>
 #include <cstdlib>
 
 
-#include <memory>
-#include <moveit_msgs/msg/detail/robot_trajectory__struct.hpp>
 #include <sstream>
 #include <string>
 #include <thread>
 #include "game_state.h"
 #include <geometry_msgs/msg/pose.hpp>
-#include <tf2/LinearMath/Quaternion.h>
-#include <moveit_msgs/msg/robot_trajectory.hpp>
-#include <geometry_msgs/msg/pose_stamped.hpp>
 #include "chess_robot/robot_controller.h"
 #include <geometry_msgs/msg/point.hpp>
 #include <vector>
@@ -26,10 +17,6 @@
 
 using namespace std::chrono_literals;
 
-
-auto ChessRobotController::getMoveGroup(){
-    return move_group_;
-}
 
 ChessRobotController::ChessRobotController() :  Node("chess_robot_controller"), 
                                                 engine("127.0.0.1", 9000), gs()
@@ -42,64 +29,6 @@ ChessRobotController::ChessRobotController() :  Node("chess_robot_controller"),
     urscript_pub_ = this->create_publisher<std_msgs::msg::String>("/urscript_interface/script_command", 10);
 }
 
-
-void ChessRobotController::initialize_move_group()
-{
-    RCLCPP_INFO(this->get_logger(), "Initializing move_group_interface");
-
-    try {
-        move_group_ = std::make_shared<moveit::planning_interface::MoveGroupInterface>(
-            this->shared_from_this(), "ur_manipulator");
-
-        move_group_->setPoseReferenceFrame("base_link");
-        move_group_->setEndEffectorLink("tool0");
-
-        move_group_->setMaxVelocityScalingFactor(0.3);
-        move_group_->setMaxAccelerationScalingFactor(0.1);
-        move_group_->setPlanningTime(5.0);
-        move_group_->setNumPlanningAttempts(10);
-        move_group_->setGoalTolerance(0.001);
-
-        RCLCPP_INFO(this->get_logger(), "Robot model loaded successfully");
-    }
-    catch (const std::exception& e) {
-        RCLCPP_ERROR(this->get_logger(), "Failed to initialize move_group: %s", e.what());
-    }
-}
-    
- 
-bool ChessRobotController::move_linear(const std::vector<geometry_msgs::msg::Pose>& waypoints) 
-{
-    moveit_msgs::msg::RobotTrajectory trajectory;
-    // Parameters: waypoints, eef_step (1cm), jump_threshold (0.0), trajectory
-    double fraction = move_group_->computeCartesianPath(waypoints, 0.01, 0.0, trajectory);
-
-    if (fraction > 0.95) { // Ensure at least 95% of the path is calculated
-        return (move_group_->execute(trajectory) == moveit::core::MoveItErrorCode::SUCCESS);
-    }
-    RCLCPP_WARN(this->get_logger(), "Linear path failed (only %f completed)", fraction);
-    return false;
-}
-
-void ChessRobotController::print_current_tcp() {
-    // This gets the (x, y, z) and orientation (quaternion) of tool0
-    geometry_msgs::msg::PoseStamped current_pose = move_group_->getCurrentPose();
-
-    RCLCPP_INFO(this->get_logger(), "Current TCP Position: x=%f, y=%f, z=%f",
-              current_pose.pose.position.x,
-              current_pose.pose.position.y,
-              current_pose.pose.position.z);
-}
-
-bool ChessRobotController::move_to_pose(geometry_msgs::msg::Pose target_pose) 
-{
-    move_group_->setPoseTarget(target_pose);
-    moveit::planning_interface::MoveGroupInterface::Plan plan;
-    if (move_group_->plan(plan) == moveit::core::MoveItErrorCode::SUCCESS) {
-        return (move_group_->execute(plan) == moveit::core::MoveItErrorCode::SUCCESS);
-    }
-    return false;
-}
 
 void ChessRobotController::run_chess_game() 
 {
@@ -217,10 +146,8 @@ std::vector<geometry_msgs::msg::Point> ChessRobotController::pixelsToTCP(std::st
     double cos_t = std::cos(theta);
     double sin_t = std::sin(theta);
 
-    geometry_msgs::msg::Pose current_tcp = move_group_->getCurrentPose().pose;
-
-    double midpoint_tcp_x = current_tcp.position.x + cam_offset_x;
-    double midpoint_tcp_y = current_tcp.position.y + cam_offset_y;
+    double midpoint_tcp_x = CAMERA_POSE.position.x + cam_offset_x;
+    double midpoint_tcp_y = CAMERA_POSE.position.y + cam_offset_y;
 
     // Scales
     // TODO: MEASURE SQUARE SIZE
@@ -294,43 +221,13 @@ const geometry_msgs::msg::Pose ChessRobotController::GRAVEYARD = [](){
 // The Z-plane where gripper contacts
 const double ChessRobotController::GRIP_HEIGHT = -0.1818;
 
-geometry_msgs::msg::Pose ChessRobotController::createPose(double x, double y, double z){
-    geometry_msgs::msg::Pose p = HOME_POSE;
-    p.position.x = x;
-    p.position.y = y;
-    p.position.z = z;
-    return p;
-}
 void ChessRobotController::normalMove(const geometry_msgs::msg::Point& from, const geometry_msgs::msg::Point& to){
 
     // PICKUP
     // TODO: OPEN GRIPPER
     std::this_thread::sleep_for(std::chrono::milliseconds(500));
 
-    move_linear({
-        createPose(from.x, from.y, HOME_POSE.position.z), // Hover
-        createPose(from.x, from.y, GRIP_HEIGHT)           // Desecend
-    });
-
-    // TODO: CLOSE GRIPPER
-    std::this_thread::sleep_for(std::chrono::milliseconds(500));
-
-    move_linear({
-        createPose(from.x, from.y, HOME_POSE.position.z), // Ascend
-        createPose(to.x, to.y, HOME_POSE.position.z),     // Hover
-        createPose(to.x, to.y, GRIP_HEIGHT)               // Descend
-    });
-    
-    // TODO: OPEN GRIPPER
-    std::this_thread::sleep_for(std::chrono::milliseconds(500));
-
-    move_linear({
-        createPose(to.x, to.y, HOME_POSE.position.z),     // Ascend
-        HOME_POSE                                         // Home
-    });
-    
-
-
+    movel_normal_script(from, to);
 }
 
 void ChessRobotController::executeMove(Tile fromTile, Tile toTile, MoveType type){
@@ -374,7 +271,7 @@ int FORCE = 20;
 void ChessRobotController::set_gripper(int width, int force){
     std::string cmd = "python3 /home/mates/onlab/src/chess_robot/scripts/robot_script/gripper.py " 
                       "--width " + std::to_string(width) + " --force " + std::to_string(force);
-    int ret = std::system(cmd.c_str());
+    std::system(cmd.c_str());
 
 }
 
@@ -541,5 +438,3 @@ void ChessRobotController::runDebug(){
     RCLCPP_INFO(this->get_logger(), "URScript command sent directly to the robot.");
 
 }
-
-

@@ -12,28 +12,7 @@
   <!-- Core ROS2 dependencies -->
   <depend>rclcpp</depend>
   <depend>std_msgs</depend>
-  <depend>sensor_msgs</depend>
-  
-  <!-- Robot control dependencies -->
-  <depend>rclcpp_action</depend>
-  <depend>control_msgs</depend>
-  <depend>ur_msgs</depend>
-  <depend>moveit_ros_planning_interface</depend>
-  <depend>moveit_core</depend>
-  
-  <!-- MoveIt dependencies -->
-  <depend>eigen</depend>
-  <depend>eigen3_cmake_module</depend>
-  <depend>geometric_shapes</depend>
   <depend>geometry_msgs</depend>
-  <depend>tf2</depend>
-  <depend>moveit_msgs</depend>
-  
-  <!-- Image processing dependencies -->
-  <depend>cv_bridge</depend>
-  <depend>image_transport</depend>
-  <depend>image_view</depend>
-
   <depend>std_srvs</depend>
 
   <test_depend>ament_lint_auto</test_depend>
